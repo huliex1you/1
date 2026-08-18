@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسليم</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- SheetJS for Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- React & ReactDOM & Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f3f4f6;
+        }
+        h1, h2, h3, .font-cairo {
+            font-family: 'Cairo', sans-serif;
+        }
+
+        /* تخصيص شريط التمرير */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ألوان الشركة */
+        .text-qyem-blue { color: #1e3a8a; }
+        .bg-qyem-blue { background-color: #1e3a8a; }
+        .border-qyem-blue { border-color: #1e3a8a; }
+        .bg-qyem-light { background-color: #e0f2fe; }
+
+        /* إعدادات الطباعة - حاسمة لطباعة كافة الصفحات */
+        @media print {
+            @page { size: A4; margin: 0; }
+            
+            body, html, #root {
+                height: auto !important;
+                background-color: white !important;
+                overflow: visible !important;
+            }
+            
+            .app-layout {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            
+            .no-print { display: none !important; }
+            
+            .preview-container {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                background: transparent !important;
+            }
+            
+            .receipt-card {
+                page-break-after: always !important;
+                break-after: page !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 15mm !important; /* الهوامش للطباعة */
+                width: 210mm;
+                height: 297mm;
+                box-sizing: border-box;
+                border: none !important;
+            }
+
+            /* إجبار المتصفح على طباعة الألوان الدقيقة */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body class="overflow-hidden h-screen text-gray-800">
+
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const FooterGraphics = () => (
+            <div className="relative w-48 h-32 opacity-80 pointer-events-none">
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-600 rounded-sm"></div>
+                <div className="absolute bottom-4 left-16 w-20 h-20 bg-blue-400 rounded-sm"></div>
+                <div className="absolute bottom-12 left-8 w-16 h-16 bg-blue-300 rounded-sm"></div>
+                <div className="absolute bottom-20 left-24 w-12 h-12 bg-blue-500 rounded-sm"></div>
+                <div className="absolute bottom-2 left-32 w-8 h-8 bg-blue-800 rounded-sm"></div>
+                <div className="absolute bottom-8 left-40 w-6 h-6 bg-blue-200 rounded-sm"></div>
+            </div>
+        );
+
+        const ReceiptForm = ({ data, deliveryType, manager, supervisor, stamp, onDelete }) => {
+            return (
+                <div className="receipt-card bg-white w-full max-w-4xl mx-auto p-10 relative flex flex-col shadow-sm mb-8 border border-gray-200">
+                    
+                    {/* زر الحذف الفردي */}
+                    {onDelete && (
+                        <button 
+                            onClick={onDelete}
+                            className="absolute top-4 left-4 w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-full hover:bg-red-100 hover:text-red-700 transition-colors no-print z-10 shadow-sm border border-red-100"
+                            title="حذف هذا النموذج"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    )}
+
+                    {/* الترويسة والشعار */}
+                    <div className="flex justify-between items-start border-b-2 border-gray-100 pb-6 mb-8">
+                        <div className="text-right font-cairo font-bold text-gray-700 leading-relaxed text-lg">
+                            <p>المملكة العربية السعودية</p>
+                            <p>القصيم - بريدة</p>
+                            <p className="text-qyem-blue text-xl mt-1">شركة قيم التعلم الأهلية</p>
+                        </div>
+                        <div className="text-left flex flex-col items-center justify-center">
+                            <div className="flex flex-wrap w-12 h-12 mb-2 relative">
+                                <div className="absolute top-0 right-0 w-6 h-6 bg-blue-800"></div>
+                                <div className="absolute top-2 right-4 w-6 h-6 bg-blue-500"></div>
+                                <div className="absolute bottom-0 left-0 w-6 h-6 bg-blue-400"></div>
+                            </div>
+                            <h1 className="text-3xl font-black text-qyem-blue tracking-wider font-cairo m-0">QYEM <span className="font-tajawal">قيم</span></h1>
+                            <p className="text-blue-500 font-bold text-sm tracking-wide">تعليــم المستقبــل</p>
+                        </div>
+                    </div>
+
+                    {/* العنوان النصي للنموذج */}
+                    <div className="text-center mb-10">
+                        <h2 className="text-3xl font-bold text-qyem-blue underline decoration-2 underline-offset-8">
+                            استلام {deliveryType}
+                        </h2>
+                    </div>
+
+                    {/* الإقرار */}
+                    <div className="mb-8 text-xl leading-loose text-gray-800">
+                        <p>
+                            يفيد بيان استلام <span className="font-bold text-qyem-blue">({deliveryType})</span> الموظف المذكور بياناته أدناه لدى شركة قيم التعلم الأهلية.
+                        </p>
+                        {data['ملاحظات'] ? (
+                            <p className="mt-4 text-sm text-gray-600 bg-gray-50 p-4 border-r-4 border-qyem-blue rounded">
+                                {data['ملاحظات']}
+                            </p>
+                        ) : (
+                            <p className="mt-8 text-gray-400 select-none">
+                                ...........................................................................................................................................
+                            </p>
+                        )}
+                    </div>
+
+                    {/* جدول البيانات (محاذاة لليسار) */}
+                    <table className="w-full border-collapse border-2 border-gray-400 mb-16 table-auto">
+                        <thead>
+                            <tr className="bg-qyem-light text-qyem-blue font-bold text-lg text-left">
+                                <th className="border-2 border-gray-400 py-4 px-3 w-1/4">اسم الموظف</th>
+                                <th className="border-2 border-gray-400 py-4 px-2 whitespace-nowrap">رقم الهوية</th>
+                                <th className="border-2 border-gray-400 py-4 px-2 whitespace-nowrap">الشهر / التاريخ</th>
+                                <th className="border-2 border-gray-400 py-4 px-2 whitespace-nowrap">الوظيفة</th>
+                                <th className="border-2 border-gray-400 py-4 px-2 whitespace-nowrap">المبلغ</th>
+                                <th className="border-2 border-gray-400 py-4 px-2 w-24 text-center">التوقيع</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr className="text-lg font-medium h-16 text-left">
+                                <td className="border-2 border-gray-400 py-3 px-4">{data['اسم الموظف'] || '-'}</td>
+                                <td className="border-2 border-gray-400 py-3 px-4 whitespace-nowrap" dir="ltr">{data['رقم الهوية'] || '-'}</td>
+                                <td className="border-2 border-gray-400 py-3 px-4 whitespace-nowrap">{data['الشهر'] || '-'}</td>
+                                <td className="border-2 border-gray-400 py-3 px-4 whitespace-nowrap">{data['الوظيفة'] || '-'}</td>
+                                <td className="border-2 border-gray-400 py-3 px-4 font-bold whitespace-nowrap">{data['المبلغ'] ? `${data['المبلغ']} ريال` : '-'}</td>
+                                <td className="border-2 border-gray-400 py-3 px-2"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    {/* التوقيعات والختم */}
+                    <div className="flex justify-between items-start mt-auto mb-20 px-10 relative">
+                        {/* الختم يظهر في المنتصف خلفية */}
+                        {stamp && (
+                            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-70 pointer-events-none">
+                                <img src={stamp} alt="ختم الشركة" className="w-48 h-48 object-contain mix-blend-multiply" />
+                            </div>
+                        )}
+
+                        <div className="text-center w-56 relative z-10">
+                            <h3 className="font-bold text-xl text-gray-700 mb-8">{manager.title}</h3>
+                            <p className="text-lg font-cairo">{manager.name}</p>
+                            <div className="h-16 mt-2 relative flex justify-center items-center">
+                                {manager.signature ? (
+                                    <img src={manager.signature} alt="توقيع" className="max-h-16 object-contain mix-blend-multiply" />
+                                ) : (
+                                    <svg className="w-32 h-16 absolute left-1/2 -translate-x-1/2 top-0 opacity-20" viewBox="0 0 100 50" fill="none" stroke="#1e3a8a" strokeWidth="2" strokeLinecap="round"><path d="M10,30 Q20,10 40,30 T70,10 T90,30" /><path d="M30,40 Q50,20 80,40" /></svg>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="text-center w-56 relative z-10">
+                            <h3 className="font-bold text-xl text-gray-700 mb-8">{supervisor.title}</h3>
+                            <p className="text-lg font-cairo">{supervisor.name}</p>
+                            <div className="h-16 mt-2 relative flex justify-center items-center">
+                                {supervisor.signature ? (
+                                    <img src={supervisor.signature} alt="توقيع" className="max-h-16 object-contain mix-blend-multiply" />
+                                ) : (
+                                    <svg className="w-32 h-16 absolute left-1/2 -translate-x-1/2 top-0 opacity-20" viewBox="0 0 100 50" fill="none" stroke="#1e3a8a" strokeWidth="2" strokeLinecap="round"><path d="M20,25 C40,5 60,45 80,25" /><path d="M40,35 C50,15 70,35 60,15" /></svg>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* التذييل */}
+                    <div className="mt-auto border-t-2 border-gray-200 pt-6 flex justify-between items-end relative overflow-hidden">
+                        <FooterGraphics />
+                        <div className="text-right text-sm text-gray-600 font-medium z-10 space-y-1">
+                            <p className="flex justify-end items-center gap-2">info@qyem-q.edu.sa <span className="text-qyem-blue">✉</span></p>
+                            <p className="flex justify-end items-center gap-2">www.qyem-q.edu.sa <span className="text-qyem-blue">🌐</span></p>
+                            <p className="flex justify-end items-center gap-2">@qyem_sa <span className="text-qyem-blue">𝕏</span></p>
+                            <div className="h-px w-full bg-gray-300 my-2"></div>
+                            <p>القصيم - بريدة - الدائري الغربي 📍</p>
+                            <p>س.ت 1131326799 📄</p>
+                            <p>05 33 84 99 55 📞</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const monthsList = [
+                "01 - يناير", "02 - فبراير", "03 - مارس", "04 - أبريل", "05 - مايو", "06 - يونيو",
+                "07 - يوليو", "08 - أغسطس", "09 - سبتمبر", "10 - أكتوبر", "11 - نوفمبر", "12 - ديسمبر"
+            ];
+            
+            const jobsList = [
+                "معلم", "معلمة", "إداري", "إدارية", "عامل", "عاملة", "حارس", "حارسة"
+            ];
+
+            const [deliveryType, setDeliveryType] = useState('مرتب');
+            const [customDeliveryType, setCustomDeliveryType] = useState('');
+            const fileInputRef = useRef(null);
+
+            const [manager, setManager] = useState({ title: 'مدير الخدمات المساندة', name: 'م. عبدالعزيز الفهيد', signature: null });
+            const [supervisor, setSupervisor] = useState({ title: 'المشرف العام', name: 'د. بندر بن عبدالعزيز المحيميد', signature: null });
+            const [stamp, setStamp] = useState(null);
+
+            const initialEmployee = { "اسم الموظف": "أحمد هيبة حسن", "رقم الهوية": "2569596709", "الشهر": "05 - مايو", "الوظيفة": "معلم", "المبلغ": "5000", "ملاحظات": "" };
+            const [employeesData, setEmployeesData] = useState([initialEmployee]);
+            
+            const [manualData, setManualData] = useState({ "اسم الموظف": "", "رقم الهوية": "", "الشهر": monthsList[0], "الوظيفة": jobsList[0], "المبلغ": "", "ملاحظات": "" });
+
+            const displayDeliveryType = deliveryType === 'آخر' ? customDeliveryType || '________' : deliveryType;
+
+            const handleFocus = (e) => e.target.select();
+
+            const handleDeleteEmployee = (index) => {
+                const newData = [...employeesData];
+                newData.splice(index, 1);
+                setEmployeesData(newData);
+            };
+
+            const handleClearAll = () => {
+                if(confirm('هل أنت متأكد من مسح جميع البيانات؟')) {
+                    setEmployeesData([]);
+                }
+            };
+
+            const handleImageUpload = (e, role) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        const result = evt.target.result;
+                        if (role === 'manager') setManager(prev => ({...prev, signature: result}));
+                        if (role === 'supervisor') setSupervisor(prev => ({...prev, signature: result}));
+                        if (role === 'stamp') setStamp(result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleAddManualData = () => {
+                if(manualData['اسم الموظف']) {
+                    // إذا كانت القائمة تحتوي فقط على النموذج الافتراضي قم باستبداله، غير ذلك أضف للنهاية
+                    if (employeesData.length === 1 && employeesData[0]['اسم الموظف'] === "أحمد هيبة حسن" && employeesData[0]['رقم الهوية'] === "2569596709") {
+                        setEmployeesData([{...manualData}]);
+                    } else {
+                        setEmployeesData([...employeesData, {...manualData}]);
+                    }
+                    // تصفير الحقول بعد الإضافة
+                    setManualData({"اسم الموظف": "", "رقم الهوية": "", "الشهر": monthsList[0], "الوظيفة": jobsList[0], "المبلغ": "", "ملاحظات": ""});
+                } else {
+                    alert("الرجاء إدخال اسم الموظف على الأقل");
+                }
+            };
+
+            const handleExportLatex = () => {
+                let latexContent = `\\documentclass[a4paper,12pt]{article}
+\\usepackage{polyglossia}
+\\setmainlanguage{arabic}
+\\setmainfont{Amiri} % تأكد من توفر خط أميري في نظامك
+\\usepackage[margin=15mm]{geometry}
+\\usepackage{tabularx}
+\\usepackage{graphicx}
+
+\\begin{document}
+`;
+                employeesData.forEach((emp, index) => {
+                    latexContent += `
+\\begin{center}
+\\textbf{\\LARGE المملكة العربية السعودية} \\\\
+\\textbf{\\large القصيم - بريدة} \\\\
+\\textbf{\\large شركة قيم التعلم الأهلية} \\\\
+\\vspace{1cm}
+\\textbf{\\Huge استلام ${displayDeliveryType}} \\\\
+\\vspace{1cm}
+\\end{center}
+
+يفيد بيان استلام (${displayDeliveryType}) الموظف المذكور بياناته أدناه لدى شركة قيم التعلم الأهلية.
+
+\\vspace{0.5cm}
+\\begin{center}
+\\begin{tabularx}{\\textwidth}{|c|c|c|c|c|X|}
+\\hline
+\\textbf{التوقيع} & \\textbf{المبلغ} & \\textbf{الوظيفة} & \\textbf{الشهر/التاريخ} & \\textbf{رقم الهوية} & \\textbf{اسم الموظف} \\\\
+\\hline
+ & ${emp['المبلغ'] || '-'} & ${emp['الوظيفة'] || '-'} & ${emp['الشهر'] || '-'} & ${emp['رقم الهوية'] || '-'} & ${emp['اسم الموظف'] || '-'} \\\\
+\\hline
+\\end{tabularx}
+\\end{center}
+
+\\vspace{3cm}
+
+\\noindent
+\\begin{minipage}[t]{0.45\\textwidth}
+\\begin{center}
+\\textbf{${manager.title}} \\\\
+\\vspace{0.5cm}
+${manager.name}
+\\end{center}
+\\end{minipage}%
+\\hfill
+\\begin{minipage}[t]{0.45\\textwidth}
+\\begin{center}
+\\textbf{${supervisor.title}} \\\\
+\\vspace{0.5cm}
+${supervisor.name}
+\\end{center}
+\\end{minipage}
+
+\\vfill
+\\begin{center}
+\\hrule
+\\vspace{0.2cm}
+\\small info@qyem-q.edu.sa $|$ www.qyem-q.edu.sa $|$ @qyem\\_sa \\\\
+القصيم - بريدة - الدائري الغربي $|$ س.ت 1131326799 $|$ 05 33 84 99 55
+\\end{center}
+`;
+                    if (index < employeesData.length - 1) {
+                        latexContent += `\n\\newpage\n`;
+                    }
+                });
+
+                latexContent += `\n\\end{document}`;
+                const blob = new Blob([latexContent], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'delivery_forms.tex';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const downloadTemplate = () => {
+                const ws = XLSX.utils.json_to_sheet([
+                    { "اسم الموظف": "", "رقم الهوية": "", "الشهر": "", "الوظيفة": "", "المبلغ": "", "ملاحظات": "" }
+                ]);
+                const wscols = [{wch: 25}, {wch: 15}, {wch: 15}, {wch: 20}, {wch: 10}, {wch: 40}];
+                ws['!cols'] = wscols;
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "البيانات");
+                XLSX.writeFile(wb, "قالب_البيانات.xlsx");
+            };
+
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const bstr = evt.target.result;
+                        const wb = XLSX.read(bstr, { type: 'binary' });
+                        const wsname = wb.SheetNames[0];
+                        const ws = wb.Sheets[wsname];
+                        const data = XLSX.utils.sheet_to_json(ws);
+                        if (data && data.length > 0) setEmployeesData(data);
+                    } catch (error) {
+                        alert('حدث خطأ أثناء القراءة، تأكد من صيغة الملف.');
+                    }
+                };
+                reader.readAsBinaryString(file);
+            };
+
+            return (
+                <div className="flex h-screen bg-gray-100 app-layout">
+                    {/* Sidebar / Controls */}
+                    <aside className="w-96 bg-white shadow-xl flex flex-col z-10 sidebar h-full shrink-0">
+                        <div className="p-6 border-b border-gray-200 bg-qyem-blue text-white shrink-0">
+                            <h2 className="text-2xl font-cairo font-bold flex items-center gap-2">
+                                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                تسليم
+                            </h2>
+                            <p className="text-sm mt-2 opacity-80 border-t border-blue-700 pt-2">إصدار نماذج التسليم والطباعة</p>
+                        </div>
+
+                        <div className="p-5 flex-1 overflow-y-auto flex flex-col gap-6 custom-scrollbar">
+                            
+                            {/* نوع الاستلام */}
+                            <div className="space-y-3">
+                                <label className="block text-sm font-bold text-gray-700">نوع الاستلام (يطبق للكل)</label>
+                                <select 
+                                    value={deliveryType}
+                                    onChange={(e) => setDeliveryType(e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-qyem-blue bg-gray-50"
+                                >
+                                    <option value="مرتب">مرتب</option>
+                                    <option value="سلفة">سلفة</option>
+                                    <option value="مكافأة">مكافأة</option>
+                                    <option value="آخر">آخر (تحديد مخصص)</option>
+                                </select>
+                                {deliveryType === 'آخر' && (
+                                    <input 
+                                        type="text" 
+                                        placeholder="اكتب النوع المخصص..."
+                                        value={customDeliveryType}
+                                        onFocus={handleFocus}
+                                        onChange={(e) => setCustomDeliveryType(e.target.value)}
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-qyem-blue"
+                                    />
+                                )}
+                            </div>
+
+                            <hr className="border-gray-200" />
+
+                            {/* الإدخال اليدوي */}
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-bold text-gray-700 border-b pb-1">إضافة موظف يدوياً</h3>
+                                <input type="text" placeholder="اسم الموظف *" value={manualData['اسم الموظف']} onFocus={handleFocus} onChange={e => setManualData({...manualData, 'اسم الموظف': e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-qyem-blue focus:outline-none" />
+                                
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input type="text" placeholder="رقم الهوية" value={manualData['رقم الهوية']} onFocus={handleFocus} onChange={e => setManualData({...manualData, 'رقم الهوية': e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-qyem-blue focus:outline-none" />
+                                    <input type="text" placeholder="المبلغ" value={manualData['المبلغ']} onFocus={handleFocus} onChange={e => setManualData({...manualData, 'المبلغ': e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-qyem-blue focus:outline-none" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <select value={manualData['الشهر']} onChange={e => setManualData({...manualData, 'الشهر': e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-qyem-blue focus:outline-none bg-white">
+                                        {monthsList.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                    <select value={manualData['الوظيفة']} onChange={e => setManualData({...manualData, 'الوظيفة': e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-qyem-blue focus:outline-none bg-white">
+                                        {jobsList.map(j => <option key={j} value={j}>{j}</option>)}
+                                    </select>
+                                </div>
+                                
+                                <input type="text" placeholder="ملاحظات (اختياري)" value={manualData['ملاحظات']} onFocus={handleFocus} onChange={e => setManualData({...manualData, 'ملاحظات': e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-qyem-blue focus:outline-none" />
+                                <button onClick={handleAddManualData} className="w-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold py-2 rounded transition-colors text-sm">
+                                    + إضافة للقائمة
+                                </button>
+                            </div>
+
+                            <hr className="border-gray-200" />
+
+                            {/* إعدادات الموقعين والختم */}
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-bold text-gray-700 border-b pb-1">إعدادات الموقعين والختم</h3>
+                                
+                                <div className="bg-gray-50 p-3 rounded border border-gray-200 space-y-2">
+                                    <p className="text-xs font-bold text-gray-600">الموقع الأول:</p>
+                                    <input type="text" value={manager.title} onFocus={handleFocus} onChange={e => setManager({...manager, title: e.target.value})} placeholder="المنصب" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+                                    <input type="text" value={manager.name} onFocus={handleFocus} onChange={e => setManager({...manager, name: e.target.value})} placeholder="الاسم" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">صورة التوقيع:</label>
+                                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'manager')} className="w-full text-xs" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-50 p-3 rounded border border-gray-200 space-y-2">
+                                    <p className="text-xs font-bold text-gray-600">الموقع الثاني:</p>
+                                    <input type="text" value={supervisor.title} onFocus={handleFocus} onChange={e => setSupervisor({...supervisor, title: e.target.value})} placeholder="المنصب" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+                                    <input type="text" value={supervisor.name} onFocus={handleFocus} onChange={e => setSupervisor({...supervisor, name: e.target.value})} placeholder="الاسم" className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs" />
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">صورة التوقيع:</label>
+                                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'supervisor')} className="w-full text-xs" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-blue-50 p-3 rounded border border-blue-200 space-y-2">
+                                    <p className="text-xs font-bold text-blue-800">ختم الشركة:</p>
+                                    <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'stamp')} className="w-full text-xs text-blue-700" />
+                                </div>
+                            </div>
+
+                            <hr className="border-gray-200" />
+
+                            {/* إدارة البيانات والاستيراد */}
+                            <div className="space-y-3 pb-6">
+                                <h3 className="text-sm font-bold text-gray-700 mb-2">استيراد وتصدير الإكسل</h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={downloadTemplate} className="w-full bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 font-bold py-2 rounded text-xs">
+                                        تنزيل القالب
+                                    </button>
+                                    <button onClick={() => fileInputRef.current.click()} className="w-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold py-2 rounded text-xs">
+                                        رفع البيانات
+                                    </button>
+                                </div>
+                                <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} ref={fileInputRef} className="hidden" />
+                                
+                                {employeesData.length > 0 && (
+                                    <div className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200 mt-2">
+                                        <span className="text-xs font-bold text-gray-700">القائمة: {employeesData.length} موظف</span>
+                                        <button onClick={handleClearAll} className="text-xs text-red-600 hover:text-red-800 font-bold px-2 py-1 bg-red-50 rounded">إلغاء الكل</button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* أزرار الطباعة النهائية */}
+                            <div className="mt-auto shrink-0 flex flex-col gap-3 pb-6">
+                                <button 
+                                    onClick={() => window.print()}
+                                    disabled={employeesData.length === 0}
+                                    className={`w-full flex items-center justify-center gap-2 font-bold py-3 px-4 rounded shadow-md transition-all text-sm ${employeesData.length === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-qyem-blue text-white hover:bg-blue-800 hover:shadow-lg'}`}
+                                >
+                                    🖨️ طباعة كل الملفات
+                                </button>
+                                
+                                <button 
+                                    onClick={handleExportLatex}
+                                    disabled={employeesData.length === 0}
+                                    className={`w-full flex items-center justify-center gap-2 font-bold py-2 px-4 rounded border-2 transition-all text-sm ${employeesData.length === 0 ? 'border-gray-200 text-gray-400 cursor-not-allowed' : 'border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white'}`}
+                                >
+                                    📄 تصدير بصيغة LaTeX
+                                </button>
+                                <p className="text-[10px] text-center text-gray-500">الطباعة تتم بدقة A4 (300 DPI)</p>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* Preview Area (مساحة عرض النماذج) */}
+                    <main className="flex-1 overflow-y-auto bg-gray-100 p-8 preview-container">
+                        <div className="max-w-4xl mx-auto space-y-12">
+                            {employeesData.length === 0 ? (
+                                <div className="bg-white rounded-lg p-12 text-center text-gray-500 shadow-sm no-print border border-dashed border-gray-300 mt-20">
+                                    <p className="text-xl font-bold font-cairo">لا توجد بيانات للعرض</p>
+                                    <p className="mt-2 text-sm">قم بإضافة موظفين يدوياً أو ارفع ملف إكسل لرؤية النماذج.</p>
+                                </div>
+                            ) : (
+                                employeesData.map((emp, index) => (
+                                    <ReceiptForm 
+                                        key={index} 
+                                        data={emp} 
+                                        deliveryType={displayDeliveryType}
+                                        manager={manager}
+                                        supervisor={supervisor}
+                                        stamp={stamp}
+                                        onDelete={() => handleDeleteEmployee(index)}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
