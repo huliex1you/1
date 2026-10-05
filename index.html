@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional UI - Combined Concepts</title>
+    <style>
+        /* --- Color Palette Variables --- */
+        :root {
+            --color-1: #001D39; /* Darkest */
+            --color-2: #0A4174;
+            --color-3: #49769F;
+            --color-4: #4E8EA2;
+            --color-5: #6EA2B3;
+            --color-6: #7BBDE8;
+            --color-7: #BDD8E9; /* Lightest Background */
+            
+            /* Neumorphism Shadows for Light Theme */
+            --shadow-light: #ffffff;
+            --shadow-dark: #91b5ca;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--color-7);
+            color: var(--color-1);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* --- Layout --- */
+        .sidebar {
+            width: 80px;
+            background-color: var(--color-7);
+            padding: 30px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            overflow-y: auto;
+        }
+
+        /* --- Neumorphic Buttons (Sidebar) --- */
+        .neu-icon-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            border: none;
+            background-color: var(--color-7);
+            box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+            cursor: pointer;
+            color: var(--color-2);
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .neu-icon-btn:active, .neu-icon-btn.active {
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            color: var(--color-4);
+        }
+
+        /* --- Water/Glass Search Bar --- */
+        .search-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .search-bar {
+            width: 100%;
+            max-width: 600px;
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            background: linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.1));
+            box-shadow: 0 8px 32px 0 rgba(73, 118, 159, 0.2), 
+                        inset 4px 4px 8px rgba(255,255,255,0.8),
+                        inset -4px -4px 8px rgba(110, 162, 179, 0.2);
+            backdrop-filter: blur(10px);
+            font-size: 18px;
+            color: var(--color-1);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-bar::placeholder {
+            color: var(--color-3);
+        }
+
+        .search-bar:focus {
+            box-shadow: 0 8px 32px 0 rgba(73, 118, 159, 0.4), 
+                        inset 4px 4px 8px rgba(255,255,255,0.9),
+                        inset -4px -4px 8px rgba(110, 162, 179, 0.3);
+            border-color: var(--color-5);
+        }
+
+        /* --- Content Grid --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+        }
+
+        /* --- Feature Card (Dark Embossed) --- */
+        .feature-card {
+            background-color: var(--color-2);
+            border-radius: 20px;
+            padding: 30px;
+            color: #fff;
+            display: flex;
+            gap: 20px;
+            box-shadow: 12px 12px 24px var(--shadow-dark), -12px -12px 24px var(--shadow-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Simulating the embossed floral pattern area */
+        .feature-emboss-panel {
+            width: 80px;
+            border-right: 2px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+        }
+        
+        .emboss-shape {
+            width: 100%;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--color-2);
+            box-shadow: inset 3px 3px 6px var(--color-1), inset -3px -3px 6px var(--color-3);
+        }
+
+        .feature-content {
+            flex: 1;
+        }
+
+        .badge {
+            background: var(--color-3);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 3px 3px 6px var(--color-1), -3px -3px 6px rgba(255,255,255,0.1);
+            display: inline-block;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .feature-content h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .feature-content p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--color-7);
+        }
+
+        /* --- Neumorphic Controls Panel --- */
+        .controls-panel {
+            background-color: var(--color-7);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 10px 10px 20px var(--shadow-dark), -10px -10px 20px var(--shadow-light);
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: var(--color-2);
+        }
+
+        /* Neumorphic Slider */
+        .slider-container {
+            width: 100%;
+            height: 15px;
+            border-radius: 10px;
+            background: var(--color-7);
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            position: absolute;
+            z-index: 2;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: var(--color-6);
+            border: 4px solid var(--color-7);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        .slider-fill {
+            height: 100%;
+            border-radius: 10px;
+            background: var(--color-4);
+            width: 50%; /* Default */
+            position: absolute;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Neumorphic Toggle */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .toggle-switch {
+            width: 60px;
+            height: 30px;
+            border-radius: 15px;
+            background: var(--color-7);
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--color-7);
+            box-shadow: 2px 2px 5px var(--shadow-dark), -2px -2px 5px var(--shadow-light);
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: var(--color-4);
+            box-shadow: inset 4px 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch.active .toggle-circle {
+            left: 33px;
+            background: #fff;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar UI elements -->
+    <div class="sidebar">
+        <button class="neu-icon-btn active">H</button>
+        <button class="neu-icon-btn">★</button>
+        <button class="neu-icon-btn">⊞</button>
+        <button class="neu-icon-btn">⚙</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        
+        <!-- Search Bar (Water/Glass Effect) -->
+        <div class="search-container">
+            <input type="text" class="search-bar" placeholder="Searchralism...">
+        </div>
+
+        <div class="grid-container">
+            
+            <!-- Feature Card (Dark Blue / Embossed) -->
+            <div class="feature-card">
+                <div class="feature-emboss-panel">
+                    <div class="emboss-shape"></div>
+                    <div class="emboss-shape" style="height: 80px;"></div>
+                    <div class="emboss-shape"></div>
+                </div>
+                <div class="feature-content">
+                    <div class="badge">FEATURE 1</div>
+                    <h2>Feature One</h2>
+                    <p>Fusce quis ante eu tortor cursus consequat. Quisque aliquam tincidunt purus, id posuere. Design inspired by the dark blue embossed reference image to provide depth and elegance.</p>
+                </div>
+            </div>
+
+            <!-- Controls Panel (Neumorphic Sliders/Toggles) -->
+            <div class="controls-panel">
+                <div class="control-group">
+                    <label>Volume / Intensity</label>
+                    <div class="slider-container">
+                        <div class="slider-fill" id="sliderFill"></div>
+                        <input type="range" min="1" max="100" value="50" class="slider" id="mySlider">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Enable Features</label>
+                    <div class="toggle-container">
+                        <div class="toggle-switch" id="myToggle">
+                            <div class="toggle-circle"></div>
+                        </div>
+                        <span id="toggleText" style="color: var(--color-3); font-weight: bold;">Off</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Sidebar Buttons Toggle
+        const buttons = document.querySelectorAll('.neu-icon-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                buttons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Slider Logic
+        const slider = document.getElementById('mySlider');
+        const sliderFill = document.getElementById('sliderFill');
+        slider.oninput = function() {
+            sliderFill.style.width = this.value + '%';
+        }
+
+        // Toggle Switch Logic
+        const toggle = document.getElementById('myToggle');
+        const toggleText = document.getElementById('toggleText');
+        toggle.addEventListener('click', () => {
+            toggle.classList.toggle('active');
+            if(toggle.classList.contains('active')) {
+                toggleText.innerText = "On";
+                toggleText.style.color = "var(--color-2)";
+            } else {
+                toggleText.innerText = "Off";
+                toggleText.style.color = "var(--color-3)";
+            }
+        });
+    </script>
+</body>
+</html>
